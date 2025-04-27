@@ -7,8 +7,12 @@ from SpikeZoneApiApp.renderers import UserRenderer
 from django.contrib.auth import authenticate
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.permissions import IsAuthenticated
-from SpikeZoneApiApp.serializers import UserLoginSerializer, UserProfileSerializer, UserRegistrationSerializer, ProductSerializer, ProductListSerializer, CategorySerializer
-from SpikeZoneApiApp.models import Products, Category
+from SpikeZoneApiApp.serializers import UserLoginSerializer,ContactSerializer, UserProfileSerializer, UserRegistrationSerializer, ProductSerializer, ProductListSerializer, CategorySerializer, OrderItemSerializer, OrderSerializer, AddressSerializer
+from SpikeZoneApiApp.models import Products, Contact, Category, OrderItem, Address, Order, User
+import razorpay
+from django.conf import settings
+from rest_framework.decorators import action
+from django.db import transaction
 
 
 def get_token_for_user(user):
@@ -103,4 +107,221 @@ class ProductDetailView(generics.RetrieveAPIView):
     def get(self, request, pk, *args, **kwargs):
         product = self.get_object()
         serializer = self.get_serializer(product)
+        return Response(serializer.data)    
+
+
+class OrderViewSet(viewsets.ModelViewSet):
+    queryset = Order.objects.all()  # Explicitly define the queryset
+    serializer_class = OrderSerializer
+    permission_classes = [IsAuthenticated]
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Initialize Razorpay client with API key and secret
+        self.client = razorpay.Client(
+            auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_KEY_SECRET)
+        )
+
+    def get_queryset(self):
+        # Check if the authenticated user is an admin
+        if self.request.user.is_admin:
+            # Admin can see all orders
+            return Order.objects.all().select_related('user', 'address').prefetch_related('items', 'items__product')
+        else:
+            # Regular users can only see their own orders
+            return Order.objects.filter(user=self.request.user).select_related('user', 'address').prefetch_related('items', 'items__product')
+
+    def create(self, request, *args, **kwargs):
+        try:
+            with transaction.atomic():
+                # Validate and create the order
+                serializer = self.get_serializer(data=request.data)
+                serializer.is_valid(raise_exception=True)
+                order = serializer.save(user=request.user)  # Automatically associate the order with the logged-in user
+
+                # Calculate the total amount
+                order.refresh_from_db()
+                amount = int(float(order.total_amount) * 100)  # Convert to paise
+
+                # Create Razorpay order
+                razorpay_order = self.client.order.create({
+                    "amount": amount,
+                    "currency": "INR",
+                    "payment_capture": "1",
+                    "notes": {
+                        "order_id": str(order.id),
+                        "user_id": str(order.user.id)
+                    }
+                })
+
+                # Update the order with Razorpay details
+                order.razorpay_order_id = razorpay_order['id']
+                order.save()
+
+                # Return the response with updated data
+                serializer = self.get_serializer(order)
+                response_data = serializer.data
+                response_data.update({
+                    "razorpay_order_id": razorpay_order['id'],
+                    "razorpay_amount": amount,
+                    "currency": "INR",
+                    "key": settings.RAZORPAY_KEY_ID
+                })
+
+                return Response(response_data, status=status.HTTP_201_CREATED)
+
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        self.perform_destroy(instance)
+        return Response(
+            {"message": "Order deleted successfully"},
+            status=status.HTTP_204_NO_CONTENT
+        )
+    
+    def list(self, request, *args, **kwargs):
+        # Force fresh data fetch
+        queryset = self.filter_queryset(self.get_queryset())
+        serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data)
+
+    def update(self, request, *args, **kwargs):
+        partial = kwargs.pop('partial', False)
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=request.data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+        return Response(serializer.data)
+
+    @action(detail=True, methods=['patch'])
+    def update_status(self, request, pk=None):
+        order = self.get_object()
+        delivery_status = request.data.get('delivery_status')
+        payment_status = request.data.get('payment_status')
+
+        if delivery_status and delivery_status in dict(Order.DELIVERY_STATUS_CHOICES):
+            order.delivery_status = delivery_status
+        
+        if payment_status and payment_status in dict(Order.PAYMENT_STATUS_CHOICES):
+            order.payment_status = payment_status
+
+        order.save()
+        serializer = self.get_serializer(order)
+        return Response(serializer.data)
+
+    @action(detail=True, methods=['post'])
+    def verify_payment(self, request, pk=None):
+        try:
+            order = self.get_object()
+            
+            # Get the payment details from request
+            payment_id = request.data.get('razorpay_payment_id')
+            order_id = request.data.get('razorpay_order_id')
+            signature = request.data.get('razorpay_signature')
+
+            # Log the received data for debugging
+            print(f"Received payment verification data:")
+            print(f"Payment ID: {payment_id}")
+            print(f"Order ID: {order_id}")
+            print(f"Signature: {signature}")
+
+            # Create parameters dict
+            params_dict = {
+                'razorpay_payment_id': payment_id,
+                'razorpay_order_id': order_id,
+                'razorpay_signature': signature
+            }
+
+            try:
+                # Verify signature
+                self.client.utility.verify_payment_signature(params_dict)
+                
+                # Update order status
+                order.payment_status = 'completed'
+                order.razorpay_payment_id = payment_id
+                order.save()
+
+                return Response({
+                    'status': 'success',
+                    'message': 'Payment verified successfully',
+                    'order_id': order.id,
+                    'payment_id': payment_id
+                })
+
+            except razorpay.errors.SignatureVerificationError as e:
+                # Log the error for debugging
+                print(f"Signature verification failed: {str(e)}")
+                order.payment_status = 'failed'
+                order.save()
+                return Response({
+                    'status': 'error',
+                    'message': 'Payment signature verification failed'
+                }, status=status.HTTP_400_BAD_REQUEST)
+
+        except Exception as e:
+            print(f"Payment verification error: {str(e)}")
+            return Response({
+                'status': 'error',
+                'message': str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+    
+class AddressViewSet(viewsets.ModelViewSet):
+    queryset = Address.objects.all()  # Explicitly define the queryset
+    serializer_class = AddressSerializer
+
+    def get_queryset(self):
+        user_id = self.kwargs.get('user_id')
+        if user_id is not None:
+            return Address.objects.filter(user_id=user_id)
+        return self.queryset
+
+    def destroy(self, request, *args, **kwargs):
+        try:
+            instance = self.get_object()
+            self.perform_destroy(instance)
+            return Response(
+                {"message": "Address deleted successfully"}, 
+                status=status.HTTP_204_NO_CONTENT
+            )
+        except Address.DoesNotExist:
+            return Response(
+                {"error": "Address not found"}, 
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+class ProductUpdateDeleteView(generics.RetrieveUpdateDestroyAPIView):
+    queryset = Products.objects.all()
+    serializer_class = ProductSerializer
+
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        self.perform_destroy(instance)
+        return Response({"message": "Product deleted successfully"}, status=status.HTTP_200_OK)
+
+class CategoryUpdateDeleteView(generics.RetrieveUpdateDestroyAPIView):
+    queryset = Category.objects.all()
+    serializer_class = CategorySerializer
+
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        self.perform_destroy(instance)
+        return Response({"message": "Category deleted successfully"}, status=status.HTTP_200_OK)
+
+class UserProfileUpdateDeleteView(generics.RetrieveUpdateDestroyAPIView):
+    queryset = User.objects.all()
+    serializer_class = UserProfileSerializer
+
+
+class ContactViewSet(viewsets.ModelViewSet):
+    queryset = Contact.objects.all()
+    serializer_class = ContactSerializer
+    permission_classes = [IsAuthenticated]
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response({"message": "Contact data submitted successfully."}, status=status.HTTP_201_CREATED)

@@ -1,9 +1,6 @@
 from django.db import models
 from django.contrib.auth.models import BaseUserManager, AbstractBaseUser
 
-# Create your models here.
-
-
 class CustomUserManager(BaseUserManager):
     def create_user(self, email, name, contact, address="", state="", city="", postalcode="", is_active=True, is_admin=False, password=None):
 
@@ -67,7 +64,7 @@ class Category(models.Model):
 
 class Products(models.Model):
     product_sku = models.CharField(max_length=50)
-    category = models.CharField(max_length=100)
+    category = models.ForeignKey(Category, on_delete=models.CASCADE)
     inStock = models.BooleanField(default=True)
     isBest = models.BooleanField(default=False)
     title = models.CharField(max_length=50)
@@ -85,3 +82,79 @@ class Products(models.Model):
     bullet_three = models.CharField(max_length=500, null=True, blank=True)
     bullet_four = models.CharField(max_length=500, null=True, blank=True)
     bullet_five = models.CharField(max_length=500, null=True, blank=True)
+
+class Address(models.Model):
+    user = models.ForeignKey(User, related_name='addresses', on_delete=models.CASCADE)
+    full_name = models.CharField(max_length=100)
+    phone = models.CharField(max_length=15)
+    address = models.CharField(max_length=255)
+    city = models.CharField(max_length=100)
+    state = models.CharField(max_length=100)
+    zip_code = models.CharField(max_length=10)
+
+    def __str__(self):
+        return f"Address {self.id} for {self.user.username}"
+
+class Order(models.Model):
+    DELIVERY_STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('processing', 'Processing'),
+        ('shipped', 'Shipped'),
+        ('delivered', 'Delivered'),
+        ('cancelled', 'Cancelled')
+    ]
+    
+    PAYMENT_STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('completed', 'Completed'),
+        ('failed', 'Failed'),
+        ('refunded', 'Refunded')
+    ]
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    address = models.ForeignKey(Address, on_delete=models.SET_NULL, null=True)
+    pay_method = models.CharField(max_length=255)
+    order_date = models.DateTimeField(auto_now_add=True)
+    razorpay_order_id = models.CharField(max_length=100, null=True, blank=True)
+    razorpay_payment_id = models.CharField(max_length=100, null=True, blank=True)
+    delivery_status = models.CharField(
+        max_length=20, 
+        choices=DELIVERY_STATUS_CHOICES,
+        default='pending'
+    )
+    payment_status = models.CharField(
+        max_length=20, 
+        choices=PAYMENT_STATUS_CHOICES,
+        default='pending'
+    )
+
+    def __str__(self):
+        return f"Order {self.id} by {self.user.name} - {self.delivery_status}"
+    
+    @property
+    def total_amount(self):
+        return sum(
+            float(item.product.price) * item.quantity 
+            for item in self.items.all()
+        )
+
+    def __str__(self):
+        return f"Order {self.id} by {self.user.name} - {self.delivery_status}"
+
+class OrderItem(models.Model):
+    order = models.ForeignKey(Order, related_name='items', on_delete=models.CASCADE)
+    product = models.ForeignKey(Products, on_delete=models.CASCADE)
+    quantity = models.PositiveIntegerField(default=1)
+
+    def __str__(self):
+        return f"{self.product.title} (x{self.quantity})"
+
+class Contact(models.Model):
+    name = models.CharField(max_length=100)
+    email = models.EmailField(max_length=255)
+    subject = models.CharField(max_length=255)
+    message = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Contact from {self.name} - {self.subject}"

@@ -91,6 +91,8 @@ DATABASES = {
     }
 }
 
+RAZORPAY_KEY_ID = "rzp_test_D19SMc0qHwB6pE"
+RAZORPAY_KEY_SECRET = "H3kfkB4gYPpoWgmupR8dlkrU"
 
 # Password validation
 # https://docs.djangoproject.com/en/4.0/ref/settings/#auth-password-validators
@@ -147,7 +149,7 @@ REST_FRAMEWORK = {
 }
 
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=30),
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
 
     'AUTH_HEADER_TYPES': ('Bearer',),
