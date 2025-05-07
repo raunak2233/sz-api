@@ -1,5 +1,5 @@
 from django.urls import path, include
-from SpikeZoneApiApp.views import UserLoginView, ContactViewSet, UserProfileView, UserRegistrationView, ProductView, ProductListView, CategoryView, ProductDetailView, ProductUpdateDeleteView, CategoryUpdateDeleteView, UserProfileUpdateDeleteView, OrderViewSet, AddressViewSet
+from SpikeZoneApiApp.views import UserLoginView, ContactViewSet, GalleryViewSet, UserProfileView, UserRegistrationView, ProductView, ProductListView,  ProductDetailBySlugView, CategoryView, ProductDetailView, ProductUpdateDeleteView, CategoryUpdateDeleteView, UserProfileUpdateDeleteView, OrderViewSet, AddressViewSet, ReviewViewSet
 from django.conf import settings
 from django.conf.urls.static import static
 from rest_framework.routers import DefaultRouter
@@ -10,6 +10,10 @@ router = DefaultRouter()
 router.register(r'orders', OrderViewSet, basename='order')
 router.register(r'addresses', AddressViewSet, basename='address')
 router.register(r'contact', ContactViewSet, basename='contact')
+router.register(r'reviews', ReviewViewSet, basename='review')
+router.register(r'gallery', GalleryViewSet, basename='gallery')
+
+
 
 urlpatterns = [
     path('register/', UserRegistrationView.as_view(), name='register'),
@@ -23,6 +27,7 @@ urlpatterns = [
     path('categories/update/<int:pk>/', CategoryUpdateDeleteView.as_view(), name='category-update-delete'),
     path('profiles/update/<int:pk>/', UserProfileUpdateDeleteView.as_view(), name='profile-update-delete'),
     path('products/<int:pk>/', ProductDetailView.as_view()),
+    path('products/<slug:slug>/', ProductDetailBySlugView.as_view(), name='product-detail-by-slug'),
     path('addresses/<int:user_id>/', AddressViewSet.as_view({
         'get': 'list',
         'delete': 'destroy'

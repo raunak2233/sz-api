@@ -6,13 +6,15 @@ from rest_framework.views import APIView
 from SpikeZoneApiApp.renderers import UserRenderer
 from django.contrib.auth import authenticate
 from rest_framework_simplejwt.tokens import RefreshToken
-from rest_framework.permissions import IsAuthenticated
-from SpikeZoneApiApp.serializers import UserLoginSerializer,ContactSerializer, UserProfileSerializer, UserRegistrationSerializer, ProductSerializer, ProductListSerializer, CategorySerializer, OrderItemSerializer, OrderSerializer, AddressSerializer
-from SpikeZoneApiApp.models import Products, Contact, Category, OrderItem, Address, Order, User
+from rest_framework.permissions import IsAuthenticated, AllowAny, IsAuthenticatedOrReadOnly
+from SpikeZoneApiApp.serializers import UserLoginSerializer, GallerySerializer, ContactSerializer, UserProfileSerializer, UserRegistrationSerializer, ProductSerializer, ProductListSerializer, CategorySerializer, OrderItemSerializer, OrderSerializer, AddressSerializer, ReviewSerializer
+from SpikeZoneApiApp.models import Products, Review, Gallery, Contact, Category, OrderItem, Address, Order, User
 import razorpay
 from django.conf import settings
 from rest_framework.decorators import action
 from django.db import transaction
+from rest_framework.exceptions import ValidationError
+
 
 
 def get_token_for_user(user):
@@ -51,11 +53,27 @@ class UserLoginView(APIView):
 
 
 class UserProfileView(APIView):
-    render_classes = [UserRenderer]
+    renderer_classes = [UserRenderer]
     permission_classes = [IsAuthenticated]
 
     def get(self, request, format=None):
-        serializer = UserProfileSerializer(request.user)
+        user_id = request.query_params.get('id')
+
+        if user_id:
+            if not request.user.is_admin:
+                return Response(
+                    {"error": "You do not have permission to access this resource."},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+
+            try:
+                user = User.objects.get(id=user_id)
+            except User.DoesNotExist:
+                return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
+        else:
+            user = request.user
+
+        serializer = UserProfileSerializer(user)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 
@@ -99,6 +117,16 @@ class ProductListView(generics.ListAPIView):
     queryset = Products.objects.all()
     serializer_class = ProductListSerializer
 
+
+class ProductDetailBySlugView(generics.RetrieveAPIView):
+    queryset = Products.objects.all()
+    serializer_class = ProductSerializer
+    lookup_field = 'slug'
+
+    def get(self, request, slug, *args, **kwargs):
+        product = self.get_object()
+        serializer = self.get_serializer(product)
+        return Response(serializer.data)
 
 class ProductDetailView(generics.RetrieveAPIView):
     queryset = Products.objects.all()
@@ -251,7 +279,6 @@ class OrderViewSet(viewsets.ModelViewSet):
                 })
 
             except razorpay.errors.SignatureVerificationError as e:
-                # Log the error for debugging
                 print(f"Signature verification failed: {str(e)}")
                 order.payment_status = 'failed'
                 order.save()
@@ -318,10 +345,47 @@ class UserProfileUpdateDeleteView(generics.RetrieveUpdateDestroyAPIView):
 class ContactViewSet(viewsets.ModelViewSet):
     queryset = Contact.objects.all()
     serializer_class = ContactSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [AllowAny]
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response({"message": "Contact data submitted successfully."}, status=status.HTTP_201_CREATED)
+    
+class ReviewViewSet(viewsets.ModelViewSet):
+    queryset = Review.objects.all()
+    serializer_class = ReviewSerializer
+
+    def get_permissions(self):
+        if self.action in ['list', 'retrieve']:
+            return [AllowAny()]
+        return [IsAuthenticated()]
+
+    def get_queryset(self):
+        product_id = self.request.query_params.get('product_id')
+        if product_id:
+            return Review.objects.filter(product_id=product_id)
+        return super().get_queryset()
+
+    def perform_create(self, serializer):
+        user = self.request.user
+        product = serializer.validated_data['product']
+        order = serializer.validated_data['order']  # Get the order from the request
+
+        # Check if the user has placed the order for the product
+        if not Order.objects.filter(id=order.id, user=user, items__product=product).exists():
+            raise ValidationError("You cannot review this product because you have not placed an order for it.")
+
+        # Check if the user has already reviewed the product for the same order
+        if Review.objects.filter(user=user, product=product, order=order).exists():
+            raise ValidationError("You have already reviewed this product for this order.")
+
+        # Save the review if all checks pass
+        serializer.save(user=user, order=order)
+
+class GalleryViewSet(viewsets.ModelViewSet):
+    queryset = Gallery.objects.all()
+    serializer_class = GallerySerializer
+    parser_classes = [MultiPartParser, FormParser]  # Allow file uploads
+    permission_classes = [IsAuthenticatedOrReadOnly]  # Allow public read access, but restrict write access

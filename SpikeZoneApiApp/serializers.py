@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from SpikeZoneApiApp.models import User, Products, Category, Order, Contact, OrderItem, Address
+from SpikeZoneApiApp.models import User, Products, Gallery, Category, Order, Contact, OrderItem, Address, Review
 from django.contrib.auth import authenticate
 from django.db import transaction
 
@@ -37,7 +37,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ['id', 'name', 'contact',
+        fields = ['id', 'name', 'contact', 'email',
                   'address', 'state', 'city', 'postalcode', 'is_admin']
 
 
@@ -46,11 +46,22 @@ class CategorySerializer(serializers.ModelSerializer):
         model = Category
         fields = "__all__"
 
+class ReviewSerializer(serializers.ModelSerializer):
+    user_name = serializers.CharField(source='user.name', read_only=True)
+    product_title = serializers.CharField(source='product.title', read_only=True)
+    razorpay_order_id = serializers.CharField(source='order.razorpay_order_id', read_only=True)  # Fetch directly from the order
 
+    class Meta:
+        model = Review
+        fields = ['id', 'product', 'product_title', 'user', 'user_name', 'order', 'razorpay_order_id', 'rating', 'review_text', 'created_at']
+            
 class ProductSerializer(serializers.ModelSerializer):
+
+    reviews = ReviewSerializer(many=True, read_only=True)
+
     class Meta:
         model = Products
-        fields = "__all__"
+        fields = ['id', 'product_sku', 'category', 'reviews', 'inStock', 'isBest', 'title', 'slug', 'image1', 'image2', 'image3', 'image4', 'image5', 'price', 'max_price', 'short_desc', 'long_desc', 'bullet_one', 'bullet_two', 'bullet_three', 'bullet_four', 'bullet_five']
 
 
 class ProductListSerializer(serializers.ModelSerializer):
@@ -60,7 +71,7 @@ class ProductListSerializer(serializers.ModelSerializer):
     class Meta:
         model = Products
         fields = ["id", "isBest", "image1", "image2", "image3", "image4", "image5", "title", "price", "max_price", "short_desc", "long_desc",
-                  "bullet_one", "bullet_two", "bullet_three", "bullet_four",'category_id', 'category_name']
+                  "bullet_one", "slug", "bullet_two", "bullet_three", "bullet_four",'category_id', 'category_name']
 
             
 class OrderItemSerializer(serializers.ModelSerializer):
@@ -86,7 +97,7 @@ class ContactSerializer(serializers.ModelSerializer):
 class AddressSerializer(serializers.ModelSerializer):
     class Meta:
         model = Address
-        fields = ['id', 'address', 'city', 'state', 'zip_code']
+        fields = ['id', 'full_name', 'phone', 'address', 'city', 'state', 'zip_code']
 
 class OrderSerializer(serializers.ModelSerializer):
     items = OrderItemSerializer(many=True)
@@ -161,3 +172,8 @@ class AddressSerializer(serializers.ModelSerializer):
     class Meta:
         model = Address
         fields = '__all__'
+
+class GallerySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Gallery
+        fields = ['id', 'image', 'image_title', 'image_description', 'created_at']

@@ -1,5 +1,6 @@
 from django.db import models
 from django.contrib.auth.models import BaseUserManager, AbstractBaseUser
+from django.utils.text import slugify
 
 class CustomUserManager(BaseUserManager):
     def create_user(self, email, name, contact, address="", state="", city="", postalcode="", is_active=True, is_admin=False, password=None):
@@ -68,6 +69,7 @@ class Products(models.Model):
     inStock = models.BooleanField(default=True)
     isBest = models.BooleanField(default=False)
     title = models.CharField(max_length=50)
+    slug = models.SlugField(unique=True, max_length=255)  # Slug must be set manually
     image1 = models.ImageField(upload_to="media/", null=True, blank=True)
     image2 = models.ImageField(upload_to="media/", null=True, blank=True)
     image3 = models.ImageField(upload_to="media/", null=True, blank=True)
@@ -82,6 +84,9 @@ class Products(models.Model):
     bullet_three = models.CharField(max_length=500, null=True, blank=True)
     bullet_four = models.CharField(max_length=500, null=True, blank=True)
     bullet_five = models.CharField(max_length=500, null=True, blank=True)
+
+    def __str__(self):
+        return self.title
 
 class Address(models.Model):
     user = models.ForeignKey(User, related_name='addresses', on_delete=models.CASCADE)
@@ -158,3 +163,23 @@ class Contact(models.Model):
 
     def __str__(self):
         return f"Contact from {self.name} - {self.subject}"
+
+class Review(models.Model):
+    product = models.ForeignKey(Products, related_name='reviews', on_delete=models.CASCADE)
+    user = models.ForeignKey(User, related_name='reviews', on_delete=models.CASCADE)
+    order = models.ForeignKey(Order, related_name='reviews', on_delete=models.CASCADE)  # Add this field
+    rating = models.PositiveIntegerField()
+    review_text = models.TextField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Review by {self.user.name} for {self.product.title} - {self.rating} stars"  
+
+class Gallery(models.Model):
+    image = models.ImageField(upload_to="gallery/")
+    image_title = models.CharField(max_length=255)
+    image_description = models.TextField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.image_title    
