@@ -1,5 +1,5 @@
 from django.urls import path, include
-from SpikeZoneApiApp.views import UserLoginView, ContactViewSet, GalleryViewSet, UserProfileView, UserRegistrationView, ProductView, ProductListView,  ProductDetailBySlugView, CategoryView, ProductDetailView, ProductUpdateDeleteView, CategoryUpdateDeleteView, UserProfileUpdateDeleteView, OrderViewSet, AddressViewSet, ReviewViewSet
+from SpikeZoneApiApp.views import UserLoginView, ContactViewSet, GalleryViewSet, UserProfileView, UserRegistrationView, ProductView, ProductListView,  ProductDetailBySlugView, CategoryView, ProductDetailView, ProductUpdateDeleteView, CategoryUpdateDeleteView, UserProfileUpdateDeleteView, OrderViewSet, AddressViewSet, ReviewViewSet, update_seo_json
 from django.conf import settings
 from django.conf.urls.static import static
 from rest_framework.routers import DefaultRouter
@@ -39,12 +39,11 @@ urlpatterns = [
         'post': 'verify_payment'
     }), name='verify-payment'),
     path('', include(router.urls)), 
+    path('update-seo/', update_seo_json, name='update_seo_json'),
+
 
 
 ]
-# if settings.DEBUG:
-#     urlpatterns += static(settings.MEDIA_URL,
-#                           document_root=settings.MEDIA_ROOT)
 
 urlpatterns += staticfiles_urlpatterns()
 urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

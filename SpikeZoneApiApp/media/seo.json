@@ -1,0 +1,93 @@
+{
+  "home": {
+    "title": "Welcome to SpikeZone - Your One Stop Store",
+    "description": " Discover amazing products at unbeatable prices. Fast delivery and great offers await you.",
+    "canonical_url": "https://spikezone.in",
+    "og_image": "\"https://yourdomain.com/images/og-home.jpg",
+    "twitter_card": "summary_large_image"
+  },
+  "about": {
+    "title": "about is about",
+    "description": "Learn more about SpikeZone, our mission, and what drives us to deliver excellence.",
+    "canonical_url": "https://spikezone.in/about",
+    "og_image": "https://spikezone.in/images/og-about.jpg",
+    "twitter_card": "summary"
+  },
+  "gallery": {
+    "title": "SpikeZone Gallery ",
+    "description": "Explore the gallery and see how our products are used by customers worldwide.",
+    "canonical_url": "https://spikezone.in/gallery",
+    "og_image": "https://spikezone.in/images/og-gallery.jpg",
+    "twitter_card": "summary"
+  },
+  "products": {
+    "title": "All Products - Shop Now at SpikeZone",
+    "description": "Browse our complete collection of quality products at the best prices.",
+    "canonical_url": "https://spikezone.in/products",
+    "og_image": "https://spikezone.in/images/og-products.jpg",
+    "twitter_card": "summary_large_image"
+  },
+  "contact": {
+    "title": "Contact Us - We're Here to Help",
+    "description": "Have questions? Reach out to our support team for quick assistance.",
+    "canonical_url": "https://spikezone.in/contact",
+    "og_image": "https://spikezone.in/images/og-contact.jpg",
+    "twitter_card": "summary"
+  },
+  "cart": {
+    "title": "Your Cart - Review Your Items",
+    "description": "Check and review the items you've added to your cart before proceeding to checkout.",
+    "canonical_url": "https://spikezone.in/cart",
+    "og_image": "https://spikezone.in/images/og-cart.jpg",
+    "twitter_card": "summary"
+  },
+  "checkout": {
+    "title": "Checkout - Complete Your Purchase",
+    "description": "Securely enter your details and complete your order at SpikeZone.",
+    "canonical_url": "https://spikezone.in/checkout",
+    "og_image": "https://spikezone.in/images/og-checkout.jpg",
+    "twitter_card": "summary"
+  },
+  "category": {
+    "title": "Browse Categories - SpikeZone",
+    "description": "Find products by category and discover our curated collections.",
+    "canonical_url": "https://spikezone.in/category",
+    "og_image": "https://spikezone.in/images/og-category.jpg",
+    "twitter_card": "summary"
+  },
+  "reviews": {
+    "title": "Customer Reviews - What People Are Saying",
+    "description": "Read reviews and testimonials from real customers who love our products.",
+    "canonical_url": "https://spikezone.in/reviews",
+    "og_image": "https://spikezone.in/images/og-reviews.jpg",
+    "twitter_card": "summary"
+  },
+  "signup": {
+    "title": "Create Account - Join SpikeZone",
+    "description": "Sign up now and enjoy exclusive member benefits and offers.",
+    "canonical_url": "https://spikezone.in/signup",
+    "og_image": "https://spikezone.in/images/og-signup.jpg",
+    "twitter_card": "summary"
+  },
+  "orders": {
+    "title": "Your Orders - Track and View Past Purchases",
+    "description": "Manage and track your past and current orders easily.",
+    "canonical_url": "https://spikezone.in/orders",
+    "og_image": "https://spikezone.in/images/og-orders.jpg",
+    "twitter_card": "summary"
+  },
+  "orderdetail": {
+    "title": "Order Details - View Your Order Summary",
+    "description": "Check the details and status of your specific orders.",
+    "canonical_url": "https://spikezone.in/orderdetail",
+    "og_image": "https://spikezone.in/images/og-orderdetail.jpg",
+    "twitter_card": "summary"
+  },
+  "account": {
+    "title": "My Account - Manage Your Profile",
+    "description": "Edit your information, view history, and manage your SpikeZone profile.",
+    "canonical_url": "https://spikezone.in/account",
+    "og_image": "https://spikezone.in/images/og-account.jpg",
+    "twitter_card": "summary"
+  }
+}

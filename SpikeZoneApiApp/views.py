@@ -14,7 +14,10 @@ from django.conf import settings
 from rest_framework.decorators import action
 from django.db import transaction
 from rest_framework.exceptions import ValidationError
-
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+import json
+import os
 
 
 def get_token_for_user(user):
@@ -389,3 +392,29 @@ class GalleryViewSet(viewsets.ModelViewSet):
     serializer_class = GallerySerializer
     parser_classes = [MultiPartParser, FormParser]  # Allow file uploads
     permission_classes = [IsAuthenticatedOrReadOnly]  # Allow public read access, but restrict write access
+
+
+@csrf_exempt
+def update_seo_json(request):
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            seo_file_path = os.path.join(settings.BASE_DIR, 'SpikeZoneApiApp', 'media', 'seo.json')
+
+            # Load existing JSON
+            with open(seo_file_path, 'r') as f:
+                current_data = json.load(f)
+
+            # Merge new data into selected slug
+            for slug, values in data.items():
+                current_data[slug] = values
+
+            # Write updated JSON back to file
+            with open(seo_file_path, 'w') as f:
+                json.dump(current_data, f, indent=2)
+
+            return JsonResponse({'message': 'SEO JSON updated successfully'})
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=500)
+
+    return JsonResponse({'error': 'Only POST allowed'}, status=405)

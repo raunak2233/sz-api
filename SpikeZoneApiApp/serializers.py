@@ -116,11 +116,9 @@ class OrderSerializer(serializers.ModelSerializer):
         ]
 
     def get_total_amount(self, obj):
-        # Dynamically calculate the total amount from the items
         return sum(float(item.product.price) * item.quantity for item in obj.items.all())
 
     def get_user_details(self, obj):
-        # Include user details only if the request is made by an admin
         request = self.context.get('request')
         if request and request.user.is_admin:
             return {
@@ -133,14 +131,12 @@ class OrderSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         items_data = validated_data.pop('items')
         with transaction.atomic():
-            # Create the order first
             order = Order.objects.create(**validated_data)
 
-            # Create only the items provided in the request
             for item_data in items_data:
                 OrderItem.objects.create(
                     order=order,
-                    product=item_data['product'],  # Use product directly
+                    product=item_data['product'],
                     quantity=item_data['quantity']
                 )
         return order

@@ -16,6 +16,8 @@ import os
 import posixpath
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+SEO_JSON_DIR = os.path.join(BASE_DIR, 'SpikeZoneApiApp', 'media')
+
 
 
 # Quick-start development settings - unsuitable for production
@@ -151,7 +153,6 @@ REST_FRAMEWORK = {
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
-
     'AUTH_HEADER_TYPES': ('Bearer',),
     'AUTH_HEADER_NAME': 'HTTP_AUTHORIZATION',
     'USER_ID_FIELD': 'id',
