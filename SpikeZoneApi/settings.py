@@ -87,7 +87,7 @@ DATABASES = {
         'ENGINE': 'django.db.backends.mysql',
         'NAME': 'spikezoneapi',
         'USER': 'root',
-        'PASSWORD': 'raunak2003',
+        'PASSWORD': 'db_pass',
         'HOST': 'localhost', 
         'PORT': '3306',
     }
@@ -180,7 +180,7 @@ EMAIL_PORT = 465
 EMAIL_USE_SSL = True                  
 EMAIL_USE_TLS = False                   
 EMAIL_HOST_USER = 'otp@spikezone.in'   
-EMAIL_HOST_PASSWORD = 'Raunak@2003'   
+EMAIL_HOST_PASSWORD = 'email_pass'   
 DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
 
 
