@@ -7,9 +7,11 @@ from SpikeZoneApiApp.renderers import UserRenderer
 from django.contrib.auth import authenticate
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.permissions import IsAuthenticated, AllowAny, IsAuthenticatedOrReadOnly
-from SpikeZoneApiApp.serializers import UserLoginSerializer, GallerySerializer, ContactSerializer, UserProfileSerializer, UserRegistrationSerializer, ProductSerializer, ProductListSerializer, CategorySerializer, OrderItemSerializer, OrderSerializer, AddressSerializer, ReviewSerializer
-from SpikeZoneApiApp.models import Products, Review, Gallery, Contact, Category, OrderItem, Address, Order, User
+from SpikeZoneApiApp.serializers import UserLoginSerializer, EmailSerializer, OTPVerifySerializer, BlogSerializer, GallerySerializer, ContactSerializer, UserProfileSerializer, UserRegistrationSerializer, ProductSerializer, ProductListSerializer, CategorySerializer, OrderItemSerializer, OrderSerializer, AddressSerializer, ReviewSerializer, WishlistSerializer
+from SpikeZoneApiApp.models import Products, Review, EmailOTP, Blog, Gallery, Contact, Category, OrderItem, Address, Order, User, Wishlist
 import razorpay
+import random
+from django.core.mail import send_mail
 from django.conf import settings
 from rest_framework.decorators import action
 from django.db import transaction
@@ -18,6 +20,11 @@ from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 import json
 import os
+from django.core.files.storage import default_storage
+from rest_framework.viewsets import ModelViewSet
+from django.contrib.auth import get_user_model
+
+User = get_user_model()
 
 
 def get_token_for_user(user):
@@ -53,6 +60,7 @@ class UserLoginView(APIView):
             return Response({'token': token, 'msg': 'Login Success'}, status=status.HTTP_200_OK)
         else:
             return Response({'errors': 'Email/Password is Invalid', 'email': email, 'pass': password}, status=status.HTTP_404_NOT_FOUND)
+
 
 
 class UserProfileView(APIView):
@@ -418,3 +426,92 @@ def update_seo_json(request):
             return JsonResponse({'error': str(e)}, status=500)
 
     return JsonResponse({'error': 'Only POST allowed'}, status=405)
+
+class BlogImageUploadView(APIView):
+    parser_classes = [MultiPartParser]
+
+    def post(self, request, *args, **kwargs):
+        file = request.FILES['image']
+        filename = default_storage.save(file.name, file)
+        image_url = request.build_absolute_uri(default_storage.url(filename))
+        return Response({'image_url': image_url})
+
+class BlogViewSet(ModelViewSet):
+    queryset = Blog.objects.all()
+    serializer_class = BlogSerializer
+
+def generate_otp():
+    return str(random.randint(100000, 999999))
+
+class SendOTPView(APIView):
+    def post(self, request):
+        serializer = EmailSerializer(data=request.data)
+        if serializer.is_valid():
+            email = serializer.validated_data['email']
+            otp = generate_otp()
+
+            EmailOTP.objects.create(email=email, otp=otp)
+
+            send_mail(
+                subject='One Time Password (OTP) for Email Verification',
+                message=f'Your OTP code is {otp}',
+                from_email=None,
+                recipient_list=[email],
+                html_message=f'''
+        <div style="font-family: Arial, sans-serif; padding: 20px; background-color: #f9f9f9;">
+            <h2 style="color: #333;">🔐 Email Verification</h2>
+            <p style="font-size: 16px; color: #555;">
+                Hello, <br><br>
+                Your One-Time Password (OTP) is:
+            </p>
+            <div style="font-size: 28px; font-weight: bold; color: #0b5ed7; padding: 10px 0;">
+                {otp}
+            </div>
+            <p style="font-size: 14px; color: #888;">
+                This OTP is valid for 5 minutes. Please do not share it with anyone.<br><br>
+                Regards,<br>
+                <strong>SpikeZone Team</strong>
+            </p>
+        </div>'''
+            )
+
+            return Response({'message': 'OTP sent successfully'}, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+class VerifyOTPView(APIView):
+    def post(self, request):
+        serializer = OTPVerifySerializer(data=request.data)
+        if serializer.is_valid():
+            email = serializer.validated_data['email']
+            otp = serializer.validated_data['otp']
+
+            try:
+                otp_obj = EmailOTP.objects.filter(email=email, otp=otp).latest('created_at')
+                if otp_obj.is_expired():
+                    return Response({'error': 'OTP expired'}, status=status.HTTP_400_BAD_REQUEST)
+                return Response({'message': 'OTP verified successfully'}, status=status.HTTP_200_OK)
+            except EmailOTP.DoesNotExist:
+                return Response({'error': 'Invalid OTP'}, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST) 
+
+class WishlistViewSet(viewsets.ModelViewSet):
+    serializer_class = WishlistSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return Wishlist.objects.filter(user=self.request.user).select_related('product')
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+
+    # Override lookup field to be 'product'
+    lookup_field = 'product_id'
+
+    def destroy(self, request, *args, **kwargs):
+        product_id = kwargs.get('product_id')
+        wishlist_item = Wishlist.objects.filter(user=request.user, product_id=product_id).first()
+        if wishlist_item:
+            wishlist_item.delete()
+            return Response({"message": "Removed from wishlist."}, status=status.HTTP_204_NO_CONTENT)
+        return Response({"error": "Wishlist item not found."}, status=status.HTTP_404_NOT_FOUND)    

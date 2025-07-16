@@ -1,6 +1,8 @@
 from django.db import models
 from django.contrib.auth.models import BaseUserManager, AbstractBaseUser
 from django.utils.text import slugify
+from django.utils import timezone
+import datetime
 
 class CustomUserManager(BaseUserManager):
     def create_user(self, email, name, contact, address="", state="", city="", postalcode="", is_active=True, is_admin=False, password=None):
@@ -183,3 +185,34 @@ class Gallery(models.Model):
 
     def __str__(self):
         return self.image_title    
+    
+class Blog(models.Model):
+    title = models.CharField(max_length=255)
+    content = models.TextField()
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.title   
+
+class EmailOTP(models.Model):
+    email = models.EmailField()
+    otp = models.CharField(max_length=6)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def is_expired(self):
+        return timezone.now() > self.created_at + datetime.timedelta(minutes=5)
+
+    def __str__(self):
+        return f"{self.email} - {self.otp}"     
+
+class Wishlist(models.Model):
+    user = models.ForeignKey(User, related_name='wishlists', on_delete=models.CASCADE)
+    product = models.ForeignKey(Products, related_name='wishlisted_by', on_delete=models.CASCADE)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('user', 'product')
+
+    def __str__(self):
+        return f"{self.user.email} - {self.product.title}"

@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from SpikeZoneApiApp.models import User, Products, Gallery, Category, Order, Contact, OrderItem, Address, Review
+from SpikeZoneApiApp.models import User, Products, Gallery, Blog, Category, Order, Contact, OrderItem, Address, Review, Wishlist
 from django.contrib.auth import authenticate
 from django.db import transaction
 
@@ -173,3 +173,22 @@ class GallerySerializer(serializers.ModelSerializer):
     class Meta:
         model = Gallery
         fields = ['id', 'image', 'image_title', 'image_description', 'created_at']
+
+class BlogSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Blog
+        fields = '__all__'
+
+class EmailSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+
+class OTPVerifySerializer(serializers.Serializer):
+    email = serializers.EmailField()
+    otp = serializers.CharField(max_length=6)                        
+
+class WishlistSerializer(serializers.ModelSerializer):
+    product_details = ProductSerializer(source='product', read_only=True)
+
+    class Meta:
+        model = Wishlist
+        fields = ['id', 'product', 'product_details', 'created_at']    

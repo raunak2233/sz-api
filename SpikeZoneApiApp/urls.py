@@ -1,5 +1,5 @@
 from django.urls import path, include
-from SpikeZoneApiApp.views import UserLoginView, ContactViewSet, GalleryViewSet, UserProfileView, UserRegistrationView, ProductView, ProductListView,  ProductDetailBySlugView, CategoryView, ProductDetailView, ProductUpdateDeleteView, CategoryUpdateDeleteView, UserProfileUpdateDeleteView, OrderViewSet, AddressViewSet, ReviewViewSet, update_seo_json
+from SpikeZoneApiApp.views import UserLoginView, ContactViewSet, BlogViewSet, GalleryViewSet, UserProfileView, UserRegistrationView, ProductView, ProductListView,  ProductDetailBySlugView, CategoryView, ProductDetailView, ProductUpdateDeleteView, CategoryUpdateDeleteView, UserProfileUpdateDeleteView, OrderViewSet, AddressViewSet, ReviewViewSet, update_seo_json, BlogImageUploadView, SendOTPView, VerifyOTPView, WishlistViewSet
 from django.conf import settings
 from django.conf.urls.static import static
 from rest_framework.routers import DefaultRouter
@@ -12,8 +12,8 @@ router.register(r'addresses', AddressViewSet, basename='address')
 router.register(r'contact', ContactViewSet, basename='contact')
 router.register(r'reviews', ReviewViewSet, basename='review')
 router.register(r'gallery', GalleryViewSet, basename='gallery')
-
-
+router.register(r'blogs', BlogViewSet, basename='blog')
+router.register(r'wishlist', WishlistViewSet, basename='wishlist')
 
 urlpatterns = [
     path('register/', UserRegistrationView.as_view(), name='register'),
@@ -40,6 +40,14 @@ urlpatterns = [
     }), name='verify-payment'),
     path('', include(router.urls)), 
     path('update-seo/', update_seo_json, name='update_seo_json'),
+    path("blogUpload/", BlogImageUploadView.as_view()),
+    path('send-otp/', SendOTPView.as_view()),
+    path('verify-otp/', VerifyOTPView.as_view()),
+    path('wishlist/<int:product_id>/', WishlistViewSet.as_view({'delete': 'destroy'}), name='wishlist-delete-by-product'),
+
+
+
+
 
 
 
