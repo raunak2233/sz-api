@@ -47,13 +47,25 @@ class CategorySerializer(serializers.ModelSerializer):
         fields = "__all__"
 
 class ReviewSerializer(serializers.ModelSerializer):
-    user_name = serializers.CharField(source='user.name', read_only=True)
+    user_name = serializers.SerializerMethodField()
     product_title = serializers.CharField(source='product.title', read_only=True)
-    razorpay_order_id = serializers.CharField(source='order.razorpay_order_id', read_only=True)  # Fetch directly from the order
+    razorpay_order_id = serializers.CharField(source='order.razorpay_order_id', read_only=True)
+    name = serializers.CharField(required=False, allow_blank=True)
 
     class Meta:
         model = Review
-        fields = ['id', 'product', 'product_title', 'user', 'user_name', 'order', 'razorpay_order_id', 'rating', 'review_text', 'created_at']
+        fields = ['id', 'product', 'product_title', 'user', 'user_name', 'order', 'razorpay_order_id', 'rating', 'review_text', 'name', 'created_at']
+
+    def get_user_name(self, obj):
+        # If admin set a custom name, use it; else use user.name
+        return obj.name if obj.name else (obj.user.name if obj.user else "")
+
+    def validate(self, attrs):
+        user = self.context['request'].user
+        # Only admin can set or edit the name
+        if not user.is_admin and 'name' in attrs and attrs['name']:
+            raise serializers.ValidationError("Only admin can set the user_name on a review.")
+        return attrs
             
 class ProductSerializer(serializers.ModelSerializer):
 

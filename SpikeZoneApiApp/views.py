@@ -382,17 +382,22 @@ class ReviewViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         user = self.request.user
         product = serializer.validated_data['product']
-        order = serializer.validated_data['order']  # Get the order from the request
 
-        # Check if the user has placed the order for the product
+        # If admin, allow review without order
+        if user.is_admin:
+            serializer.save(user=user, order=None)
+            return
+
+        order = serializer.validated_data.get('order')
+        if not order:
+            raise ValidationError("Order is required to review this product.")
+
         if not Order.objects.filter(id=order.id, user=user, items__product=product).exists():
             raise ValidationError("You cannot review this product because you have not placed an order for it.")
 
-        # Check if the user has already reviewed the product for the same order
         if Review.objects.filter(user=user, product=product, order=order).exists():
             raise ValidationError("You have already reviewed this product for this order.")
 
-        # Save the review if all checks pass
         serializer.save(user=user, order=order)
 
 class GalleryViewSet(viewsets.ModelViewSet):
@@ -443,6 +448,39 @@ class BlogViewSet(ModelViewSet):
 def generate_otp():
     return str(random.randint(100000, 999999))
 
+class AdminAddReviewView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        user = request.user
+        if not user.is_admin:
+            return Response({"error": "Only admin users can add reviews via this endpoint."}, status=status.HTTP_403_FORBIDDEN)
+
+        product_id = request.data.get('product')
+        rating = request.data.get('rating')
+        review_text = request.data.get('review_text') or request.data.get('review')
+        name = request.data.get('name', '')  # <-- Get name from request
+
+        if not (product_id and rating):
+            return Response({"error": "Product and rating are required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            product = Products.objects.get(id=product_id)
+        except Products.DoesNotExist:
+            return Response({"error": "Product not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        review = Review.objects.create(
+            product=product,
+            user=user,
+            rating=rating,
+            review_text=review_text or "",
+            order=None,
+            name=name
+        )
+
+        serializer = ReviewSerializer(review)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+    
 class SendOTPView(APIView):
     def post(self, request):
         serializer = EmailSerializer(data=request.data)

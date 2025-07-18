@@ -1,5 +1,5 @@
 from django.urls import path, include
-from SpikeZoneApiApp.views import UserLoginView, ContactViewSet, BlogViewSet, GalleryViewSet, UserProfileView, UserRegistrationView, ProductView, ProductListView,  ProductDetailBySlugView, CategoryView, ProductDetailView, ProductUpdateDeleteView, CategoryUpdateDeleteView, UserProfileUpdateDeleteView, OrderViewSet, AddressViewSet, ReviewViewSet, update_seo_json, BlogImageUploadView, SendOTPView, VerifyOTPView, WishlistViewSet
+from SpikeZoneApiApp.views import UserLoginView, ContactViewSet, BlogViewSet, GalleryViewSet, UserProfileView, UserRegistrationView, ProductView, ProductListView,  ProductDetailBySlugView, CategoryView, ProductDetailView, ProductUpdateDeleteView, CategoryUpdateDeleteView, UserProfileUpdateDeleteView, OrderViewSet, AddressViewSet, ReviewViewSet, update_seo_json, BlogImageUploadView, SendOTPView, VerifyOTPView, AdminAddReviewView, WishlistViewSet
 from django.conf import settings
 from django.conf.urls.static import static
 from rest_framework.routers import DefaultRouter
@@ -44,6 +44,8 @@ urlpatterns = [
     path('send-otp/', SendOTPView.as_view()),
     path('verify-otp/', VerifyOTPView.as_view()),
     path('wishlist/<int:product_id>/', WishlistViewSet.as_view({'delete': 'destroy'}), name='wishlist-delete-by-product'),
+    path('admin/add-review/', AdminAddReviewView.as_view(), name='admin-add-review'),
+
 
 
 

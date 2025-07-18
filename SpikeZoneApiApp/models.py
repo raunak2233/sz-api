@@ -169,14 +169,15 @@ class Contact(models.Model):
 class Review(models.Model):
     product = models.ForeignKey(Products, related_name='reviews', on_delete=models.CASCADE)
     user = models.ForeignKey(User, related_name='reviews', on_delete=models.CASCADE)
-    order = models.ForeignKey(Order, related_name='reviews', on_delete=models.CASCADE)  # Add this field
+    order = models.ForeignKey(Order, related_name='reviews', on_delete=models.CASCADE, null=True, blank=True)
     rating = models.PositiveIntegerField()
     review_text = models.TextField(null=True, blank=True)
+    name = models.CharField(max_length=255, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"Review by {self.user.name} for {self.product.title} - {self.rating} stars"  
-
+        return f"Review by {self.user.name} for {self.product.title} - {self.rating} stars"
+    
 class Gallery(models.Model):
     image = models.ImageField(upload_to="gallery/")
     image_title = models.CharField(max_length=255)
